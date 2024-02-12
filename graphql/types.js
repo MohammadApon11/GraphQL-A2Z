@@ -10,6 +10,7 @@ const {
   GraphQLObjectType,
   GraphQLString,
   GraphQLScalarType,
+  GraphQLInputObjectType,
 } = require("graphql");
 const { users, posts } = require("../data");
 
@@ -48,13 +49,13 @@ const UserType = new GraphQLObjectType({
       type: new GraphQLNonNull(GraphQLString),
     },
     gender: {
-      type: GenderType,
+      type: new GraphQLNonNull(GenderType),
     },
     phone: {
       type: new GraphQLNonNull(GraphQLString),
     },
     email: {
-      type: GraphQLString,
+      type: new GraphQLNonNull(GraphQLString),
     },
     result: {
       type: GraphQLInt,
@@ -92,6 +93,58 @@ const PostType = new GraphQLObjectType({
       resolve: (post, args) => {
         return users.find((user) => user.id === post.user);
       },
+    },
+  }),
+});
+
+// create a input type of user
+const UserTypeInput = new GraphQLInputObjectType({
+  name: "UserTypeInput",
+  description: "It Create a new user",
+  fields: () => ({
+    firstName: {
+      type: new GraphQLNonNull(GraphQLString),
+    },
+    lastName: {
+      type: new GraphQLNonNull(GraphQLString),
+    },
+    gender: {
+      type: new GraphQLNonNull(GenderType),
+    },
+    phone: {
+      type: new GraphQLNonNull(GraphQLString),
+    },
+    email: {
+      type: new GraphQLNonNull(GraphQLString),
+    },
+    result: {
+      type: GraphQLInt,
+    },
+  }),
+});
+
+// Update a user
+const UpdateUserTypeInput = new GraphQLInputObjectType({
+  name: "UpdateUserTypeInput",
+  description: "It update a existing user",
+  fields: () => ({
+    firstName: {
+      type: GraphQLString,
+    },
+    lastName: {
+      type: GraphQLString,
+    },
+    gender: {
+      type: GenderType,
+    },
+    phone: {
+      type: GraphQLString,
+    },
+    email: {
+      type: GraphQLString,
+    },
+    result: {
+      type: GraphQLInt,
     },
   }),
 });
@@ -140,7 +193,100 @@ const RootQueryType = new GraphQLObjectType({
   }),
 });
 
+// Root mutation Type
+const RootMutationType = new GraphQLObjectType({
+  name: "Mutaion",
+  description: "It Represent Mutation",
+  fields: () => ({
+    addUser: {
+      type: UserType,
+      args: {
+        input: {
+          type: UserTypeInput,
+        },
+      },
+      resolve: (
+        _,
+        { input: { firstName, lastName, gender, phone, email, result } }
+      ) => {
+        const user = {
+          id: users.length + 1,
+          firstName,
+          lastName,
+          gender,
+          phone,
+          email,
+          result,
+          posts: [],
+        };
+        users.push(user);
+        return user;
+      },
+    },
+    updateUser: {
+      type: UserType,
+      args: {
+        id: {
+          type: GraphQLID,
+        },
+        input: {
+          type: UpdateUserTypeInput,
+        },
+      },
+      resolve: (
+        _,
+        { id, input: { firstName, lastName, gender, phone, email, result } }
+      ) => {
+        let updatedUser = null;
+        users.forEach((user) => {
+          if (parseInt(user.id) === parseInt(id)) {
+            if (firstName) {
+              user.firstName = firstName;
+            }
+            if (lastName) {
+              user.lastName = lastName;
+            }
+            if (gender) {
+              user.gender = gender;
+            }
+            if (phone) {
+              user.phone = phone;
+            }
+            if (email) {
+              user.email = email;
+            }
+            if (result) {
+              user.result = result;
+            }
+            updatedUser = user;
+          }
+        });
+        return updatedUser;
+      },
+    },
+    deleteUser: {
+      type: new GraphQLNonNull(GraphQLBoolean),
+      args: {
+        id: {
+          type: GraphQLID,
+        },
+      },
+      resolve: (_, { id }) => {
+        const index = users.findIndex(
+          (user) => parseInt(user.id) === parseInt(id)
+        );
+        if (index >= 0) {
+          users.splice(index, 1);
+          return true;
+        }
+        return false;
+      },
+    },
+  }),
+});
+
 module.exports = {
   RootQueryType,
+  RootMutationType,
   UserType,
 };
