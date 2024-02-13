@@ -8,6 +8,7 @@ const users = [
     result: 4,
     email: "apon@gmail.com",
     posts: [1, 2],
+    createdAt: "2024-02-13T06:06:25.371Z",
   },
   {
     id: 2,
@@ -18,6 +19,7 @@ const users = [
     result: 3,
     email: "apon@gmail.com",
     posts: [3],
+    createdAt: "2024-02-13T06:06:25.371Z",
   },
   {
     id: 3,
@@ -28,6 +30,7 @@ const users = [
     email: "apon@gmail.com",
     result: 2,
     posts: [4],
+    createdAt: "2024-05-13T06:06:25.371Z",
   },
 ];
 

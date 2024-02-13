@@ -11,10 +11,12 @@ const {
   GraphQLString,
   GraphQLScalarType,
   GraphQLInputObjectType,
+  Kind,
 } = require("graphql");
+
 const { users, posts } = require("../data");
 
-// enum type of gender
+// cusomt enum type of gender
 const GenderType = new GraphQLEnumType({
   name: "GraphQLEnumType",
   description: "Enum type for gender",
@@ -32,6 +34,78 @@ const GenderType = new GraphQLEnumType({
       value: "flag",
     },
   },
+});
+
+// Date Type
+const ValidateDate = (value) => {
+  const date = new Date(value);
+  if (date.toString() === "Invalid Date") {
+    throw new GraphQLError(`${value} is a valid date`);
+  } else {
+    return date.toLocaleDateString();
+  }
+};
+
+const DateType = new GraphQLScalarType({
+  name: "DateType",
+  description: "It Represent a date",
+  parseValue: ValidateDate,
+  parseLiteral: (AST) => {
+    if (AST.kind === Kind.STRING || AST.kind === Kind.INT) {
+      return ValidateDate(AST.value);
+    } else {
+      throw new GraphQLError(`${AST.value} is not a number or string`);
+    }
+  },
+  serialize: ValidateDate,
+});
+
+// Email Type
+const ValidateEmail = (email) => {
+  if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
+    return email.toLowerCase();
+  } else {
+    throw new GraphQLError("You have entered an invalid email address!");
+  }
+};
+
+const EmailType = new GraphQLScalarType({
+  name: "EmailType",
+  description: "It For Email validation",
+  parseValue: ValidateEmail,
+  parseLiteral: (AST) => {
+    if (AST.kind === Kind.STRING || AST.kind === Kind.INT) {
+      return ValidateEmail(AST.value.toLowerCase());
+    } else {
+      throw new GraphQLError(`${AST.value} is not a valid email`);
+    }
+  },
+  serialize: ValidateEmail,
+});
+
+// password type
+const validatePassword = (password) => {
+  const passwordRegex =
+    /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,16}$/;
+  if (passwordRegex.test(password)) {
+    return password;
+  } else {
+    throw new GraphQLError("Password is not enough strong!");
+  }
+};
+
+const PasswordType = new GraphQLScalarType({
+  name: "PasswordType",
+  description: "It For Password validation",
+  parseValue: validatePassword,
+  parseLiteral: (AST) => {
+    if (AST.kind === Kind.STRING) {
+      return validatePassword(AST.value);
+    } else {
+      throw new GraphQLError("Password is not a string");
+    }
+  },
+  serialize: validatePassword,
 });
 
 // user type
@@ -55,7 +129,7 @@ const UserType = new GraphQLObjectType({
       type: new GraphQLNonNull(GraphQLString),
     },
     email: {
-      type: new GraphQLNonNull(GraphQLString),
+      type: new GraphQLNonNull(EmailType),
     },
     result: {
       type: GraphQLInt,
@@ -70,6 +144,12 @@ const UserType = new GraphQLObjectType({
           }
         });
       },
+    },
+    createdAt: {
+      type: DateType,
+    },
+    password: {
+      type: new GraphQLNonNull(PasswordType),
     },
   }),
 });
@@ -115,10 +195,16 @@ const UserTypeInput = new GraphQLInputObjectType({
       type: new GraphQLNonNull(GraphQLString),
     },
     email: {
-      type: new GraphQLNonNull(GraphQLString),
+      type: new GraphQLNonNull(EmailType),
     },
     result: {
       type: GraphQLInt,
+    },
+    createdAt: {
+      type: DateType,
+    },
+    password: {
+      type: new GraphQLNonNull(PasswordType),
     },
   }),
 });
@@ -141,10 +227,13 @@ const UpdateUserTypeInput = new GraphQLInputObjectType({
       type: GraphQLString,
     },
     email: {
-      type: GraphQLString,
+      type: EmailType,
     },
     result: {
       type: GraphQLInt,
+    },
+    password: {
+      type: PasswordType,
     },
   }),
 });
@@ -207,7 +296,17 @@ const RootMutationType = new GraphQLObjectType({
       },
       resolve: (
         _,
-        { input: { firstName, lastName, gender, phone, email, result } }
+        {
+          input: {
+            firstName,
+            lastName,
+            gender,
+            phone,
+            email,
+            result,
+            createdAt,
+          },
+        }
       ) => {
         const user = {
           id: users.length + 1,
@@ -218,6 +317,7 @@ const RootMutationType = new GraphQLObjectType({
           email,
           result,
           posts: [],
+          createdAt,
         };
         users.push(user);
         return user;
@@ -235,7 +335,18 @@ const RootMutationType = new GraphQLObjectType({
       },
       resolve: (
         _,
-        { id, input: { firstName, lastName, gender, phone, email, result } }
+        {
+          id,
+          input: {
+            firstName,
+            lastName,
+            gender,
+            phone,
+            email,
+            result,
+            createdAt,
+          },
+        }
       ) => {
         let updatedUser = null;
         users.forEach((user) => {
@@ -257,6 +368,9 @@ const RootMutationType = new GraphQLObjectType({
             }
             if (result) {
               user.result = result;
+            }
+            if (createdAt) {
+              user.createdAt = createdAt;
             }
             updatedUser = user;
           }
